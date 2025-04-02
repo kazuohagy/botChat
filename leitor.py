@@ -2,32 +2,31 @@ import edge_tts
 import asyncio
 import pytchat
 from playsound import playsound
-import time
-import os
+from multiprocessing import Process
+#pt-BR-FranciscaNeural audio femenino
+#pt-BR-AntonioNeural audio masculino
+video_id = "MwEJyxlIhks"  # ID da live
+nome_arquivo = "audio.mp3"  # Sempre o mesmo arquivo
 
-video_id = "0FARWIfBPps"  # ID da live
-chat = pytchat.create(video_id)
-
-async def apagar_audio(nome_arquivo):
-    """Aguarda 5 segundos e apaga o arquivo de áudio."""
-    await asyncio.sleep(5)  # Aguarda 5 segundos antes de apagar
-    if os.path.exists(nome_arquivo):  # Confirma se o arquivo ainda existe
-        os.remove(nome_arquivo)
-        print(f"Arquivo {nome_arquivo} apagado.")
+def tocar_audio(arquivo):
+    """Executa o áudio de forma segura sem bloquear o arquivo."""
+    playsound(arquivo)
 
 async def texto_para_audio(texto):
-    """Gera, toca e agenda a exclusão do áudio."""
-    nome_arquivo = f"audio_{int(time.time())}.mp3"
+    """Gera e toca o áudio, substituindo o arquivo anterior."""
     communicate = edge_tts.Communicate(texto, "pt-BR-AntonioNeural")
-    await communicate.save(nome_arquivo)
+    await communicate.save(nome_arquivo)  # Sempre salva no mesmo arquivo
     print(f"Áudio salvo como {nome_arquivo}")
 
-    playsound(nome_arquivo)  # Toca o áudio
+    # Executa o áudio em um processo separado
+    p = Process(target=tocar_audio, args=(nome_arquivo,))
+    p.start()
+    p.join()  # Aguarda a execução para evitar múltiplas reproduções sobrepostas
 
-    # Agenda a exclusão do arquivo após 5 segundos
-    asyncio.create_task(apagar_audio(nome_arquivo))
+if __name__ == '__main__':
+    chat = pytchat.create(video_id)
 
-while chat.is_alive():
-    for msg in chat.get().sync_items():
-        print(f"{msg.author.name}: {msg.message}")
-        asyncio.run(texto_para_audio(f"{msg.author.name}: {msg.message}"))
+    while chat.is_alive():
+        for msg in chat.get().sync_items():
+            print(f"{msg.author.name} mandou 0 reais: {msg.message}")
+            asyncio.run(texto_para_audio(f"{msg.author.name} mandou 0 reais: {msg.message}"))
